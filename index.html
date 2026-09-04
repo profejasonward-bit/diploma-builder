@@ -291,7 +291,7 @@
   }
   .info-grid{
     display:grid;
-    grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns:repeat(2, 1fr);
     gap:14px;
   }
   @media (max-width:460px){.info-grid{grid-template-columns:1fr;}}
@@ -419,24 +419,6 @@
         <label for="infoDob">Date of birth</label>
         <input type="date" id="infoDob">
       </div>
-      <div class="info-field">
-        <label for="infoGender">Gender</label>
-        <select id="infoGender">
-          <option value="">Select&hellip;</option>
-          <option>Female</option>
-          <option>Male</option>
-          <option>Non-binary</option>
-          <option>Prefer not to say</option>
-        </select>
-      </div>
-      <div class="info-field">
-        <label for="infoId">Student ID number</label>
-        <input type="text" id="infoId" placeholder="Student ID number">
-      </div>
-      <div class="info-field">
-        <label for="infoEmail">Email address</label>
-        <input type="email" id="infoEmail" placeholder="Email address">
-      </div>
     </div>
   </div>
 
@@ -480,35 +462,37 @@ const GROUPS = [
 ];
 
 const COURSES = [
-  {id:"lal",  group:1, name:"Language and Literature", levels:["HL"]},
+  {id:"lal",  group:1, name:"Language A: Language and Literature", levels:["HL"]},
 
-  {id:"spa",  group:2, name:"Spanish", levels:["SL","HL"]},
-  {id:"spa_ai", group:2, name:"Spanish ab initio", levels:["SL"], abInitio:true},
+  {id:"spa",  group:2, name:"Language B: Spanish", levels:["SL","HL"]},
+  {id:"abi",  group:2, name:"Language B: Spanish ab initio", levels:["SL"]},
+  {id:"fab",  group:2, name:"Language B: French ab initio", levels:["SL"]},
+  {id:"fre",  group:2, name:"Language B: French", levels:["SL","HL"]},
 
-  {id:"his",  group:3, name:"History", levels:["SL"], flag:"HL route offered as \u201cHistory of the Americas\u201d \u2014 listed separately below"},
   {id:"hoa",  group:3, name:"History of the Americas", levels:["HL"]},
   {id:"psy",  group:3, name:"Psychology", levels:["SL","HL"]},
 
   {id:"bio",  group:4, name:"Biology", levels:["SL","HL"]},
+  {id:"che",  group:4, name:"Chemistry", levels:["SL","HL"]},
+  {id:"ess",  group:4, name:"Environmental Systems and Societies", levels:["SL"]},
   {id:"phy",  group:4, name:"Physics", levels:["SL","HL"]},
+  {id:"seh",  group:4, name:"Sports, Exercise and Health Science", levels:["SL"]},
 
-  {id:"mathapp", group:5, name:"Mathematics: Applications and Interpretation", levels:["SL","HL"]},
-  {id:"mathaa", group:5, name:"Mathematics: Analysis and Approaches", levels:["SL","HL"]},
+  {id:"mai",  group:5, name:"Mathematics: Applications and Interpretation", levels:["SL","HL"], flag:"Course list didn't specify level \u2014 assuming both SL and HL are offered; confirm with your coordinator"},
+  {id:"maa",  group:5, name:"Mathematics: Analysis and Approaches", levels:["SL","HL"], flag:"Course list didn't specify level \u2014 assuming both SL and HL are offered; confirm with your coordinator"},
 
-  {id:"dan",  group:6, name:"Dance", levels:["HL"]},
-  {id:"film", group:6, name:"Film", levels:["HL"]},
-  {id:"mus",  group:6, name:"Music", levels:["HL"]},
-  {id:"the",  group:6, name:"Theatre", levels:["HL"]},
+  {id:"dan",  group:6, name:"Dance", levels:["SL","HL"]},
+  {id:"mus",  group:6, name:"Music", levels:["SL","HL"]},
+  {id:"the",  group:6, name:"Theatre", levels:["SL","HL"]},
+  {id:"vis",  group:6, name:"Visual Arts", levels:["SL"]},
 ];
 
 /* ---------------- State ---------------- */
 let activeGroup = 1; // 1-6, or 0 for core
 let selected = {}; // courseId -> level
 let juniorTest = []; // up to 2 courseIds tested at the end of Year 1
-let juniorMathChoice = null; // one of JUNIOR_MATH_OPTIONS \u2014 only relevant when mathJuniorYear is false
+let juniorMathChoice = null; // one of JUNIOR_MATH_OPTIONS
 const JUNIOR_MATH_OPTIONS = ["Statistics","Pre-Calculus","Calculus"];
-let mathJuniorYear = false; // is IB Math taken junior year
-let mathSeniorYear = false; // is IB Math taken senior year (independent of the above \u2014 "and/or")
 
 /* ---------------- Helpers ---------------- */
 function courseById(id){ return COURSES.find(c=>c.id===id); }
@@ -694,7 +678,7 @@ function renderSide(){
 }
 
 function eligibleForJuniorTest(course){
-  return !course.abInitio;
+  return course.level !== 'HL' && course.group !== 5 && course.id !== 'abi' && course.id !== 'fab';
 }
 
 function toggleJuniorTest(courseId){
@@ -711,16 +695,10 @@ function toggleJuniorTest(courseId){
 function studentInfoHeaderHTML(){
   const name = (document.getElementById('infoName')?.value || '').trim();
   const dob = (document.getElementById('infoDob')?.value || '').trim();
-  const gender = (document.getElementById('infoGender')?.value || '').trim();
-  const idNum = (document.getElementById('infoId')?.value || '').trim();
-  const email = (document.getElementById('infoEmail')?.value || '').trim();
   return `
     <div class="schedule-student-header">
       <span><b>Name:</b> ${name || '&mdash;'}</span>
       <span><b>DOB:</b> ${dob || '&mdash;'}</span>
-      <span><b>Gender:</b> ${gender || '&mdash;'}</span>
-      <span><b>ID:</b> ${idNum || '&mdash;'}</span>
-      <span><b>Email:</b> ${email || '&mdash;'}</span>
     </div>
   `;
 }
@@ -731,8 +709,6 @@ function renderDiplomaSummary(){
   if(!status.diplomaOk){
     juniorTest = [];
     juniorMathChoice = null;
-    mathJuniorYear = false;
-    mathSeniorYear = false;
     el.innerHTML = '';
     return;
   }
@@ -758,23 +734,15 @@ function renderDiplomaSummary(){
     return `<button class="junior-chip ${on?'sel':''}" data-course="${c.id}" ${maxedOut?'disabled':''}>${c.name} <span class="lv ${c.level}">${c.level}</span></button>`;
   }).join('');
 
-  const mathCourse = status.list.find(c => c.group === 5);
-  const mathTestedEarly = mathCourse && juniorTest.includes(mathCourse.id);
-  const mathTakenJunior = mathJuniorYear || mathTestedEarly;
-
-  const year1 = status.list.filter(c => c.group !== 5 || mathTakenJunior);
-  const year2 = status.list.filter(c => !juniorTest.includes(c.id) && (c.group !== 5 || mathSeniorYear));
+  const year1 = status.list.filter(c => c.group !== 5);
+  const year2 = status.list.filter(c => !juniorTest.includes(c.id));
   const droppedNames = status.list.filter(c=>juniorTest.includes(c.id)).map(c=>c.name);
+  const mathCourse = status.list.find(c => c.group === 5);
 
-  const yearToggleChips = mathCourse ? `
-    <button class="junior-chip ${mathJuniorYear?'sel':''}" data-mathyear="junior" ${mathTestedEarly?'disabled':''}>Junior year</button>
-    <button class="junior-chip ${mathSeniorYear?'sel':''}" data-mathyear="senior">Senior year</button>
-  ` : '';
-
-  const prereqChips = (mathCourse && !mathTakenJunior) ? JUNIOR_MATH_OPTIONS.map(name=>{
+  const mathChips = JUNIOR_MATH_OPTIONS.map(name=>{
     const on = juniorMathChoice === name;
     return `<button class="junior-chip ${on?'sel':''}" data-math="${name}">${name}</button>`;
-  }).join('') : '';
+  }).join('');
 
   const scheduleCol = (title, courses, footnote) => `
     <div class="year-col">
@@ -784,18 +752,9 @@ function renderDiplomaSummary(){
     </div>
   `;
 
-  const year1Display = (!mathTakenJunior && juniorMathChoice)
+  const year1Display = juniorMathChoice
     ? [...year1, {name: juniorMathChoice + ' (junior math, non-IB)', level:''}]
     : year1;
-
-  let year1Footnote = null;
-  if(mathTestedEarly){
-    year1Footnote = `${mathCourse.name} is being tested at the end of Year 1, so it's taken junior year.`;
-  } else if(mathCourse && !mathTakenJunior && !mathSeniorYear){
-    year1Footnote = `Choose when you'll take ${mathCourse.name} above.`;
-  } else if(mathCourse && !mathTakenJunior){
-    year1Footnote = `${mathCourse.name} isn't taken until senior year, unless also selected for junior year above.`;
-  }
 
   el.innerHTML = `
     <div class="panel summary-panel">
@@ -809,25 +768,20 @@ function renderDiplomaSummary(){
         ${CORE_BLOCKS_HTML}
         <div class="core-divider"></div>
         <h3 class="summary-sub">Testing as a junior</h3>
-        <p class="note">Choose up to two subjects to sit for exams at the end of Year 1 instead of Year 2. Ab initio subjects can't be taken early &mdash; they run the full two years.</p>
+        <p class="note">Choose up to two subjects to sit for exams at the end of Year 1 instead of Year 2. Ab initio, Mathematics, and any HL subject can't be taken early &mdash; they run the full two years.</p>
         <div class="junior-chips">${juniorChips || '<p class="note">No eligible subjects in this combination.</p>'}</div>
         ${ineligibleNote.length ? `<p class="year-footnote" style="margin-top:10px;">Not eligible: ${ineligibleNote.map(c=>c.name).join(', ')}.</p>` : ''}
         <div class="core-divider"></div>
         <h3 class="summary-sub">Junior year mathematics</h3>
-        <p class="note">${mathCourse ? mathCourse.name : 'Mathematics'} can be taken junior year, senior year, or both &mdash; choose which:</p>
-        <div class="junior-chips">${yearToggleChips}</div>
-        ${mathTestedEarly ? `<p class="note" style="margin-top:12px;">Selected for junior-year testing above, so it's automatically taken junior year.</p>` : ''}
-        ${(mathCourse && !mathTakenJunior) ? `
-          <p class="note" style="margin-top:12px;">Since it's not junior year, pick a junior-year prerequisite instead:</p>
-          <div class="junior-chips">${prereqChips}</div>
-        ` : ''}
+        <p class="note">IB Mathematics (${mathCourse ? mathCourse.name : 'the chosen course'}) is only offered senior year. During junior year, pick one prerequisite instead:</p>
+        <div class="junior-chips">${mathChips}</div>
         <div class="core-divider"></div>
       </div>
       <div class="schedule-block">
         <h3 class="summary-sub">Two-year schedule</h3>
         ${studentInfoHeaderHTML()}
         <div class="year-grid">
-          ${scheduleCol('Year 1 (Junior)', year1Display, year1Footnote)}
+          ${scheduleCol('Year 1 (Junior)', year1Display, mathCourse ? `${mathCourse.name} isn't offered until senior year.` : null)}
           ${scheduleCol('Year 2 (Senior)', year2, droppedNames.length ? `${droppedNames.join(' and ')} finished after Year 1 and ${droppedNames.length===1?'is':'are'} dropped from the senior schedule.` : null)}
         </div>
       </div>
@@ -855,17 +809,11 @@ function renderDiplomaSummary(){
       renderDiplomaSummary();
     });
   });
-  el.querySelectorAll('.junior-chip[data-mathyear]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      if(btn.dataset.mathyear === 'junior'){
-        mathJuniorYear = !mathJuniorYear;
-        if(mathJuniorYear) juniorMathChoice = null; // no prereq needed once IB Math itself is taken junior year
-      } else {
-        mathSeniorYear = !mathSeniorYear;
-      }
-      renderDiplomaSummary();
-    });
-  });
+
+  const submitBtn = document.getElementById('submitPlanBtn');
+  if(submitBtn){
+    submitBtn.addEventListener('click', ()=> submitPlan(status));
+  }
 }
 
 function renderAll(){
@@ -877,7 +825,7 @@ function renderAll(){
 
 renderAll();
 
-["infoName","infoDob","infoGender","infoId","infoEmail"].forEach(id=>{
+["infoName","infoDob"].forEach(id=>{
   const el = document.getElementById(id);
   if(el) el.addEventListener('input', renderDiplomaSummary);
 });
